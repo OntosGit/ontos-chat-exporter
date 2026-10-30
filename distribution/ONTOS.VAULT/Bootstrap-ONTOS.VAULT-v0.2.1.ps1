@@ -11,7 +11,7 @@ param([switch]$Demo)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ExpectedGitBlob = '08478770664e17d2f9cf28fb36309203cfdae2e6'
-$ExpectedSha256 = '65DD15F55772352A7870E17D50136CED8CD710B76EC6FD639B8333B8562A25C'
+$ExpectedSha256 = '65DD15F55772352A7870E17D50136CED8CD710B76EC6BFD639B8333B8562A25C'
 $GitApiUrl = 'https://api.github.com/repos/OntosGit/ontos-chat-exporter/git/blobs/' + $ExpectedGitBlob
 $TempDir = Join-Path $env:TEMP ('OntosVaultBootstrap-' + [guid]::NewGuid().ToString('N'))
 $Installer = Join-Path $TempDir 'Install-ONTOS.VAULT-OneFile.ps1'
