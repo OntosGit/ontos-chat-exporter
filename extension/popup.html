@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}*{box-sizing:border-box}body{margin:0;background:#101a23;color:#e6f4f8;width:365px;padding:16px}h1{font-size:17px;margin:0 0 9px}p{font-size:12px;line-height:1.55;color:#bbd1db;margin:7px 0 12px}button{display:block;width:100%;border-radius:9px;font:600 13px system-ui;padding:12px;margin:8px 0;cursor:pointer;background:#95cde0;color:#0d2230;border:0}button.secondary{background:#293949;color:#eef8fa;border:1px solid #536b7c}button:disabled{opacity:.45;cursor:wait}#status{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.5;color:#f4dfac;margin-top:12px}#help{font-size:12px;line-height:1.55;color:#b5d5e4;white-space:pre-wrap;margin-top:6px}footer{border-top:1px solid #394955;margin-top:14px;padding-top:12px;font-size:11px;color:#91acb8;line-height:1.5}small{color:#9ab7c5}
+</style></head><body>
+<h1>ONTOS · Архив беседы <small>1.3.1</small></h1>
+<p>Сохраняет основную ветку открытой беседы, в том числе внутри проекта. Не использует прежнее внедрение скрипта через Edge.</p>
+<button id="markdown">Скачать диалог в Markdown</button>
+<button class="secondary" id="save">Сохранить HTML</button>
+<button class="secondary" id="source">Сохранить полный технический JSON</button>
+<div id="status" role="status" aria-live="polite"></div><div id="help"></div>
+<footer>Только chatgpt.com, без внешних серверов. Markdown/HTML содержат текст беседы, который тоже может быть конфиденциальным. Исходный JSON дополнительно содержит служебные записи и результаты инструментов. Никогда не публикуйте экспортированные данные без проверки. Прямой экспорт зависит от внутреннего интерфейса ChatGPT. Для гарантированного доступа к исходным данным используй официальный ZIP и ONTOS Reader.</footer>
+<script src="popup.js"></script></body></html>

@@ -1,0 +1,14 @@
+{
+  "title": "Synthetic example: project notes",
+  "conversation_id": "00000000-0000-4000-8000-000000000001",
+  "create_time": 1793352874,
+  "update_time": 1793373692,
+  "page_info": {"has_previous_page": false, "has_next_page": false},
+  "messages": [
+    {"id": "synthetic-m01", "author": {"role": "user"}, "content": {"content_type": "text", "parts": ["Please export this conversation. <script>alert(1)</script>"]}, "create_time": 1793352874},
+    {"id": "synthetic-m02", "author": {"role": "assistant"}, "recipient": "all", "content": {"content_type": "text", "parts": ["This is a synthetic answer.\n\n```js\nconsole.log('demo');\n```"]}, "create_time": 1793352875},
+    {"id": "synthetic-m03", "author": {"role": "assistant"}, "recipient": "all", "content": {"content_type": "thoughts", "parts": ["Do not export this synthetic internal placeholder."]}, "create_time": 1793352876},
+    {"id": "synthetic-m04", "author": {"role": "tool"}, "content": {"content_type": "text", "parts": ["Synthetic tool output stays in raw JSON."]}},
+    {"id": "synthetic-m05", "author": {"role": "user"}, "content": {"content_type": "multimodal_text", "parts": ["Attachment follows", {"content_type": "image_asset_pointer", "asset_pointer": "synthetic://test-image"}]}}
+  ]
+}

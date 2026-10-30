@@ -1,0 +1,391 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ONTOS · Чтение архива ChatGPT</title><style>
+:root{color-scheme:dark;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;background:#101721;color:#e5eaf0}*{box-sizing:border-box}body{margin:0;min-height:100vh}main{max-width:1100px;margin:0 auto;padding:44px 22px 80px}h1{font-size:clamp(27px,3.8vw,42px);line-height:1.2;letter-spacing:-.03em;margin:10px 0}.label{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#7dc3d7;font-weight:800}.lead{color:#a7b4c4;max-width:780px;font-size:16px}#drop{border:1px dashed #668092;border-radius:17px;margin:26px 0 14px;padding:25px;background:#182330;transition:background .15s}#drop.drag{background:#214254;border-color:#a3dae9}.flex{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}.button,button{cursor:pointer;color:#11222b;font-size:14px;background:#83cddb;border:0;border-radius:10px;padding:12px 18px;font-weight:750}.button:disabled,button:disabled{opacity:.45;cursor:default}.button.secondary{color:#dce5f0;background:#293749;border:1px solid #526174}.fileicon{font-size:28px;line-height:1;margin-bottom:9px}small,.minor{color:#9caec1}#status{padding:9px 0 16px;min-height:42px;color:#a2c9d2}#status.error{color:#e7b3a3}#controls{border-top:1px solid #29384a;padding-top:23px;margin-top:17px}input[type=search]{width:100%;border-radius:10px;border:1px solid #4b5d71;background:#182331;color:#fff;padding:13px;font:inherit;outline-offset:3px}#results{display:grid;gap:9px;max-height:450px;overflow:auto;padding:4px 0 12px;margin:12px 0 25px}.result{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%;text-align:left;background:#17212d;color:#e8f0f6;border:1px solid #2b3a4c;padding:13px 15px;font-size:14px;font-weight:400;border-radius:11px}.result:hover,.result.chosen{border-color:#88c9d9;background:#1d3541}.result b{font-size:15px;font-weight:750}.result span{color:#91a5b7;font-size:12px;overflow-wrap:anywhere}#details{border:1px solid #495a6c;border-radius:17px;background:#18212c;padding:24px;margin:25px 0}#chatTitle{font-size:23px;overflow-wrap:anywhere;margin:0 0 5px}#chatInfo{font-size:12px;overflow-wrap:anywhere}#metrics{font-weight:600;margin:18px 0}.notice{white-space:pre-wrap;color:#c3bfae;margin-bottom:22px}.actions{display:flex;gap:10px;flex-wrap:wrap}.actions button{padding:11px 14px}footer{border-top:1px solid #2f3b4d;margin-top:35px;padding-top:20px;color:#889bad;font-size:13px}[hidden]{display:none!important}
+</style></head><body><main>
+<div class="label">ONTOS · Локальный инструмент</div><h1>Сохраняем разговор целиком</h1>
+<p class="lead">Этот просмотрщик читает прямой JSON одного чата или официальный архив ChatGPT, находит разговор и создаёт HTML, в котором все сообщения присутствуют одновременно. Без прокрутки ChatGPT, без сервера, без установки программ.</p>
+<div id="drop"><div class="flex"><div><div class="fileicon">▤</div><strong>Перетащи JSON одного чата или ZIP-архив ChatGPT</strong><div class="minor">Можно выбрать прямой JSON из расширения ONTOS или архив conversations*.json</div></div><button id="open">Открыть архив / файлы</button></div><input id="files" type="file" accept=".zip,.json" multiple hidden></div>
+<div id="status" role="status">Все данные обрабатываются непосредственно на этом компьютере.</div>
+<section id="controls" hidden><input id="search" type="search" placeholder="Поиск по названию беседы или её ID" autocomplete="off"><p id="info" class="minor"></p><div id="results"></div></section>
+<section id="details" hidden><h2 id="chatTitle"></h2><div id="chatInfo" class="minor"></div><p id="metrics"></p><p id="warnings" class="notice"></p><div class="actions"><button id="html">Сохранить HTML</button><button id="markdown" class="button secondary">Сохранить Markdown</button><button id="json" class="button secondary">Сохранить исходный JSON</button></div></section>
+<footer>Нет сетевых запросов и внешних библиотек. Если экспорт включает картинки, звук или прикреплённые файлы, HTML показывает ссылки/описания, а не копии бинарных данных. Оригинальный ZIP лучше хранить отдельно.</footer>
+</main>
+<script>/* ONTOS Chat Exporter | local data processing only | 2026-10-30 */
+(function (root) {
+  'use strict';
+  const asString = value => (value === undefined || value === null ? '' : String(value));
+  const htmlEscape = value => asString(value).replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char]));
+  const safeSlug = value => asString(value || 'ChatGPT-conversation').normalize('NFKC').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90) || 'ChatGPT-conversation';
+  const formattedTime = timestamp => {
+    if (timestamp === null || timestamp === undefined || timestamp === '') return '';
+    const numeric = Number(timestamp);
+    const date = typeof timestamp === 'string' && isNaN(numeric) ? new Date(timestamp) : new Date(numeric * (numeric < 1e12 ? 1000 : 1));
+    return Number.isFinite(date.getTime()) ? date.toISOString().replace('T', ' ').replace('.000Z', ' UTC') : '';
+  };
+  function extractContents(content, metadata) {
+    const blocks = [];
+    let nonText = 0;
+    if (!content || typeof content !== 'object') {
+      if (typeof content === 'string') blocks.push(content);
+    } else if (Array.isArray(content.parts)) {
+      for (const part of content.parts) {
+        if (typeof part === 'string') { blocks.push(part); continue; }
+        if (!part || typeof part !== 'object') continue;
+        if (typeof part.text === 'string') { blocks.push(part.text); continue; }
+        if (typeof part.transcript === 'string') { blocks.push(part.transcript); continue; }
+        const kind = part.content_type || part.type || 'данные';
+        const name = part.asset_pointer || part.file_id || part.name || part.filename || '';
+        blocks.push(`[Нетекстовое вложение: ${kind}${name ? ' / ' + name : ''}]`);
+        nonText++;
+      }
+    } else {
+      for (const key of ['text', 'content', 'summary', 'result']) {
+        if (typeof content[key] === 'string' && content[key]) { blocks.push(content[key]); break; }
+      }
+      if (!blocks.length && content.content_type) {
+        blocks.push(`[Содержимое типа «${content.content_type}» представлено в исходных данных]`);
+        nonText++;
+      }
+    }
+    const attachments = Array.isArray(metadata && metadata.attachments) ? metadata.attachments : [];
+    for (const attachment of attachments) {
+      const name = attachment && (attachment.name || attachment.filename || attachment.id || 'без имени');
+      blocks.push(`[Прикреплённый файл: ${name}${attachment && attachment.mime_type ? ', ' + attachment.mime_type : ''}]`);
+      nonText++;
+    }
+    let text = blocks.join('\n\n');
+    const references = metadata && Array.isArray(metadata.content_references) ? metadata.content_references : [];
+    for (const reference of references) {
+      const needle = reference && reference.matched_text;
+      if (typeof needle === 'string' && /[\uE200-\uE203]/.test(needle) && typeof reference.alt === 'string') {
+        text = text.split(needle).join(reference.alt);
+      }
+    }
+    return { text, nonText };
+  }
+  function visibleMessage(message) {
+    if (!message || typeof message !== 'object') return false;
+    const role = message.author && message.author.role;
+    if (role !== 'user' && role !== 'assistant') return false;
+    const meta = message.metadata || {};
+    if (meta.is_visually_hidden_from_conversation === true) return false;
+    const channel = message.channel || meta.channel || meta.message_type;
+    if (['analysis', 'justify', 'confidence', 'notification'].includes(channel)) return false;
+    if (role === 'assistant' && message.recipient && message.recipient !== 'all') return false;
+    // These record types are internal service data, not conversational messages.
+    // The previous v1.2 counted 137 "thoughts" and 9 "reasoning_recap" as visible.
+    const type = message.content && message.content.content_type;
+    if (['thoughts', 'reasoning_recap', 'analysis'].includes(type)) return false;
+    // Assistant tool commands and execution records belong only in the source JSON.
+    if (role === 'assistant' && !['text', 'multimodal_text'].includes(type)) {
+      if (!(type == null && Array.isArray(message.content && message.content.parts))) return false;
+    }
+    return true;
+  }
+  function normalizeConversation(conversation) {
+    if (!conversation || typeof conversation !== 'object' || Array.isArray(conversation)) throw new Error('Вместо данных беседы получен неверный JSON.');
+    const title = conversation.title || 'Без названия';
+    const id = conversation.conversation_id || conversation.id || '';
+    const warnings = [];
+    let path = [];
+    let allNodes = 0;
+    let branchMessages = 0;
+    let sourceKind = '';
+    let verified = true;
+    if (conversation.mapping && typeof conversation.mapping === 'object' && !Array.isArray(conversation.mapping)) {
+      sourceKind = 'Дерево сообщений';
+      const mapping = conversation.mapping;
+      const nodeIds = Object.keys(mapping);
+      allNodes = nodeIds.filter(key => mapping[key] && mapping[key].message).length;
+      let current = conversation.current_node || conversation.current_node_id;
+      if (!current || !Object.prototype.hasOwnProperty.call(mapping, current)) {
+        throw new Error('Нельзя подтвердить полноту: отсутствует current_node или соответствующий узел.');
+      }
+      const visited = new Set();
+      let reachedRoot = false;
+      while (current !== null && current !== undefined) {
+        if (visited.has(current)) throw new Error('Повтор узла в цепочке сообщений: данные повреждены.');
+        visited.add(current);
+        const node = mapping[current];
+        if (!node) throw new Error('Цепочка сообщений обрывается на недостающем узле: ' + current);
+        if (node.message) path.push(node.message);
+        if (node.parent === undefined || node.parent === null || node.parent === '') { reachedRoot = true; break; }
+        current = node.parent;
+      }
+      if (!reachedRoot) throw new Error('Не найден корневой узел, сохранение прервано.');
+      path.reverse();
+      branchMessages = allNodes - path.length;
+      if (branchMessages > 0) warnings.push(`В исходном дереве есть ${branchMessages} сообщений из альтернативных веток. Они не включены в основной диалог.`);
+    } else if (Array.isArray(conversation.messages)) {
+      sourceKind = 'Последовательность сообщений';
+      const page = conversation.page_info;
+      if (!page || typeof page.has_previous_page !== 'boolean' || typeof page.has_next_page !== 'boolean') {
+        verified = false;
+        warnings.push('В этом формате нет надёжных признаков окончания всех страниц. История сохранена в полученном объёме, полную сохранность подтвердить невозможно.');
+      }
+      if (page && (page.has_previous_page === true || page.has_next_page === true)) {
+        throw new Error('Беседа содержит признаки неполной пагинации (page_info). Экспортировать как полный нельзя.');
+      }
+      path = conversation.messages.map(item => item && item.message ? item.message : item).filter(Boolean);
+      allNodes = path.length;
+      const ids = path.map(m => m.id).filter(Boolean);
+      if (new Set(ids).size !== ids.length) throw new Error('В данных беседы обнаружены повторяющиеся идентификаторы сообщений.');
+    } else {
+      throw new Error('Неизвестный формат беседы: нет ни mapping, ни messages.');
+    }
+    const visible = [];
+    let nonTextCount = 0;
+    let skipped = 0;
+    path.forEach((message, index) => {
+      if (!visibleMessage(message)) { skipped++; return; }
+      const contents = extractContents(message.content, message.metadata || {});
+      nonTextCount += contents.nonText;
+      visible.push({
+        sequence: index + 1,
+        id: message.id || '',
+        role: message.author.role,
+        date: formattedTime(message.create_time),
+        text: contents.text || '[Сообщение без извлекаемого текстового содержимого]',
+        nonTextCount: contents.nonText
+      });
+    });
+    const unfinished = path.filter(message => message && message.status === 'in_progress').length;
+    if (unfinished) warnings.push(`В момент экспорта ${unfinished} служебных/текстовых записей имели статус in_progress. Последний ход мог ещё выполняться.`);
+    if (!visible.length) throw new Error('В выбранной беседе не найдено видимых сообщений пользователя и ассистента.');
+    if (nonTextCount > 0) warnings.push(`В тексте показаны обозначения ${nonTextCount} нетекстовых блоков/вложений. Их бинарные данные отдельно не сохраняются.`);
+    return {
+      title, id, updated: formattedTime(conversation.update_time), created: formattedTime(conversation.create_time),
+      sourceKind, sourceMessages: allNodes, pathMessages: path.length, branchMessages,
+      serviceMessages: skipped, visibleMessages: visible.length, nonTextCount, unfinishedMessages: unfinished,
+      messages: visible, warnings, verified
+    };
+  }
+  function renderHTML(model) {
+    const count = model.visibleMessages;
+    const messages = model.messages.map((message, index) => {
+      const who = message.role === 'user' ? 'Вы' : 'ChatGPT';
+      const role = message.role === 'user' ? 'user' : 'assistant';
+      return `<article class="message ${role}" id="m${index + 1}"><header><span class="role">${who}</span><span>#${index + 1}${message.date ? ' · ' + htmlEscape(message.date) : ''}</span></header><pre>${htmlEscape(message.text)}</pre></article>`;
+    }).join('\n');
+    const warnings = model.warnings.length ? `<div class="notice">${model.warnings.map(x => `<p>${htmlEscape(x)}</p>`).join('')}</div>` : '';
+    const title = htmlEscape(model.title);
+    return `<!doctype html>\n<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · Архив ChatGPT</title><style>
+:root{color-scheme:dark;font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}*{box-sizing:border-box}body{background:#10141c;color:#e5e9f0;margin:0}main{max-width:1020px;margin:0 auto;padding:36px 24px 100px}h1{font-size:clamp(25px,4vw,38px);line-height:1.2;overflow-wrap:anywhere;margin:12px 0 14px}.sub{color:#9ca9bd}.stats{display:flex;gap:9px;flex-wrap:wrap;margin:24px 0}.stats span{padding:7px 11px;border:1px solid #354153;border-radius:10px;background:#1a2230}.notice{border-left:3px solid #bba779;padding:6px 16px;margin:14px 0;color:#d2cab8;background:#201e1d}.message{border:1px solid #303a49;border-radius:15px;background:#181f2b;margin:14px 0;overflow:hidden}.message.user{border-color:#325b65;background:#14292e}.message header{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #33404f;padding:12px 18px;color:#aab7ca;font-size:13px}.role{font-size:14px;font-weight:700;color:#d7f3f6}.message.assistant .role{color:#d3d3ff}.message pre{margin:0;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere;font:15px/1.65 "Segoe UI",system-ui,sans-serif;tab-size:4}.foot{font-size:12px;color:#95a2b5;margin-top:34px}@media print{:root{color-scheme:light}body{background:white;color:black}main{max-width:100%;padding:0}.message,.message.user{break-inside:avoid;background:white;color:black;border:1px solid #bbb}.message header{color:#444}.role,.message.assistant .role{color:black}.stats span{background:white;color:black}}
+</style></head><body><main><div class="sub">ONTOS · Локальный архив разговора</div><h1>${title}</h1><div class="sub">ID: ${htmlEscape(model.id || 'не указан')} · ${htmlEscape(model.updated || model.created || '')}</div><div class="stats"><span>Сообщений в HTML: <b>${count}</b></span><span>Узлов основной ветки: <b>${model.pathMessages}</b></span><span>В исходных данных: <b>${model.sourceMessages}</b></span><span>Служебных скрыто: <b>${model.serviceMessages}</b></span><span>Альтернативных веток: <b>${model.branchMessages}</b></span></div><p class="sub">${model.verified ? 'Последовательность сообщений проверена по исходной структуре' : 'Полноту исходных данных подтвердить нельзя'} (${htmlEscape(model.sourceKind)}). Показаны текстовые сообщения пользователя и ассистента; служебные записи, рассуждения и результаты инструментов остаются в исходном JSON. Никакой виртуализации, все ${count} сообщений находятся в этом HTML одновременно.</p>${warnings}${messages}<p class="foot">Сформировано ONTOS Chat Exporter. Содержимое сохранено как текст; медиафайлы, динамические виджеты и связанные внешние ресурсы могут требовать отдельных оригиналов.</p></main></body></html>`;
+  }
+  function renderMarkdown(model) {
+    const out = [`# ${model.title}`, '', `Разговор: ${model.id}`, `Сообщений: ${model.visibleMessages}; основная ветка: ${model.pathMessages}; всего узлов: ${model.sourceMessages}`, ''];
+    for (const [i, message] of model.messages.entries()) {
+      out.push(`## ${i + 1}. ${message.role === 'user' ? 'Вы' : 'ChatGPT'}${message.date ? ' · ' + message.date : ''}`, '', message.text, '');
+    }
+    if (model.warnings.length) out.push('---', '', ...model.warnings.map(x => '> ' + x), '');
+    return out.join('\n');
+  }
+  function downloadText(data, filename, mimeType) {
+    const blob = new Blob([data], {type: mimeType || 'text/plain;charset=utf-8'});
+    const objectURL = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectURL;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(objectURL), 30000);
+  }
+  root.ONTOSCore = {normalizeConversation, renderHTML, renderMarkdown, downloadText, safeSlug, formattedTime};
+})(globalThis);
+</script>
+<script>/* ONTOS Archive Reader: all processing stays inside this browser tab. */
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const fileInput = $('files');
+  const drop = $('drop');
+  const status = $('status');
+  const controls = $('controls');
+  const results = $('results');
+  const details = $('details');
+  const search = $('search');
+  const info = $('info');
+  let chats = [];
+  let selected = null;
+  let selectedModel = null;
+  function setStatus(message, error) { status.textContent = message; status.classList.toggle('error', !!error); }
+  function dataFromJSON(value, source) {
+    const candidates = Array.isArray(value) ? value :
+      (value && Array.isArray(value.conversations) ? value.conversations :
+      (value && (value.mapping || Array.isArray(value.messages)) ? [value] : null));
+    if (!candidates) throw new Error(`Файл ${source} не содержит списка бесед.`);
+    return candidates.filter(item => item && typeof item === 'object' && (item.mapping || Array.isArray(item.messages))).map(item => {
+      item.__ontos_source_file = source;
+      return item;
+    });
+  }
+  function findZipDirectory(file) {
+    return (async () => {
+      // Locate End of Central Directory in last 65,557 bytes, without loading whole ZIP into RAM.
+      const tailOffset = Math.max(0, file.size - 65557);
+      const tail = new DataView(await file.slice(tailOffset).arrayBuffer());
+      let end = -1;
+      for (let i = tail.byteLength - 22; i >= 0; i--) {
+        if (tail.getUint32(i, true) === 0x06054b50 && i + 22 + tail.getUint16(i + 20, true) === tail.byteLength) {
+          end = i; break;
+        }
+      }
+      if (end < 0) throw new Error('Не найден каталог ZIP. Архив неполный или использует неподдерживаемый формат.');
+      const count = tail.getUint16(end + 10, true);
+      const centralSize = tail.getUint32(end + 12, true);
+      const centralOffset = tail.getUint32(end + 16, true);
+      if (count === 65535 || centralOffset === 0xffffffff || centralSize === 0xffffffff) {
+        throw new Error('ZIP64: распакуй архив средствами Windows и выбери все conversations*.json через кнопку «Открыть файлы».');
+      }
+      if (centralOffset + centralSize > file.size) throw new Error('В ZIP повреждена таблица файлов.');
+      const central = new DataView(await file.slice(centralOffset, centralOffset + centralSize).arrayBuffer());
+      const entries = [];
+      const decoder = new TextDecoder('utf-8');
+      let p = 0;
+      for (let k = 0; k < count; k++) {
+        if (p + 46 > central.byteLength || central.getUint32(p, true) !== 0x02014b50) throw new Error('Повреждена запись каталога ZIP.');
+        const flags = central.getUint16(p + 8, true);
+        const method = central.getUint16(p + 10, true);
+        const compressed = central.getUint32(p + 20, true);
+        const uncompressed = central.getUint32(p + 24, true);
+        const n = central.getUint16(p + 28, true);
+        const extra = central.getUint16(p + 30, true);
+        const comment = central.getUint16(p + 32, true);
+        const offset = central.getUint32(p + 42, true);
+        if (compressed === 0xffffffff || uncompressed === 0xffffffff || offset === 0xffffffff) throw new Error('В архиве есть ZIP64-запись. Распакуй её и выбери JSON-файлы.');
+        if (p + 46 + n + extra + comment > central.byteLength) throw new Error('Неверные размеры имён внутри ZIP.');
+        const filename = decoder.decode(new Uint8Array(central.buffer, central.byteOffset + p + 46, n));
+        entries.push({filename, offset, compressed, method, flags});
+        p += 46 + n + extra + comment;
+      }
+      return entries;
+    })();
+  }
+  async function readEntry(file, entry) {
+    if (entry.flags & 1) throw new Error(`Зашифрованный файл ${entry.filename} не поддерживается.`);
+    const header = new DataView(await file.slice(entry.offset, entry.offset + 30).arrayBuffer());
+    if (header.byteLength < 30 || header.getUint32(0, true) !== 0x04034b50) throw new Error('Отсутствует заголовок ZIP-файла ' + entry.filename);
+    const start = entry.offset + 30 + header.getUint16(26, true) + header.getUint16(28, true);
+    if (start + entry.compressed > file.size) throw new Error('Файл ZIP обрывается при чтении ' + entry.filename);
+    const compressedBlob = file.slice(start, start + entry.compressed);
+    if (entry.method === 0) return await compressedBlob.text();
+    if (entry.method === 8) {
+      if (typeof DecompressionStream !== 'function') throw new Error('Браузер не поддерживает DecompressionStream. Открой файл в новой версии Edge или распакуй ZIP.');
+      try {
+        const stream = compressedBlob.stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        return await new Response(stream).text();
+      } catch (error) { throw new Error('Не удалось распаковать ' + entry.filename + ': ' + error.message); }
+    }
+    throw new Error('Неподдерживаемый метод сжатия ZIP (' + entry.method + '). Распакуй архив вручную.');
+  }
+  async function importFiles(files) {
+    selected = null; selectedModel = null; chats = [];
+    controls.hidden = true; details.hidden = true; results.textContent = '';
+    if (!files.length) return;
+    $('open').disabled = true;
+    try {
+      for (const file of files) {
+        let parts = [];
+        if (/\.zip$/i.test(file.name)) {
+          setStatus(`Читаю каталог архива ${file.name}…`);
+          const entries = await findZipDirectory(file);
+          const chosen = entries.filter(entry => /(^|\/)conversations(?:-\d+)?\.json$/i.test(entry.filename));
+          if (!chosen.length) throw new Error('В архиве не найдены conversations.json или conversations-000.json.');
+          for (const [index, entry] of chosen.entries()) {
+            setStatus(`ZIP: файл ${index + 1}/${chosen.length}: ${entry.filename}…`);
+            const json = JSON.parse(await readEntry(file, entry));
+            parts.push(...dataFromJSON(json, entry.filename));
+          }
+        } else if (/\.json$/i.test(file.name)) {
+          setStatus(`Читаю ${file.name}…`);
+          parts = dataFromJSON(JSON.parse(await file.text()), file.name);
+        } else {
+          throw new Error('Поддерживаются только ZIP и JSON.');
+        }
+        chats.push(...parts);
+        await new Promise(resolve => requestAnimationFrame(resolve));
+      }
+      const ids = new Set();
+      const dedup = [];
+      let repeats = 0;
+      for (const chat of chats) {
+        const id = chat.conversation_id || chat.id;
+        if (id && ids.has(id)) {repeats++; continue;}
+        if (id) ids.add(id);
+        dedup.push(chat);
+      }
+      chats = dedup.sort((a,b) => Number(b.update_time || b.create_time || 0) - Number(a.update_time || a.create_time || 0));
+      if (!chats.length) throw new Error('В выбранных файлах не обнаружены разговоры.');
+      controls.hidden = false;
+      search.value = '';
+      renderList();
+      setStatus(`Прочитано бесед: ${chats.length}.${repeats ? ' Повторов ID: ' + repeats + '.' : ''} Выбери нужный разговор.`);
+      search.focus();
+    } catch(error) {
+      setStatus('Ошибка: ' + (error && error.message || String(error)), true);
+      chats = []; controls.hidden = true;
+    } finally { $('open').disabled = false; }
+  }
+  function renderList() {
+    const phrase = search.value.toLocaleLowerCase().trim();
+    const filtered = chats.filter(item => (String(item.title || '') + ' ' + String(item.conversation_id || item.id || '')).toLocaleLowerCase().includes(phrase));
+    info.textContent = `Найдено: ${filtered.length}. Показаны первые ${Math.min(filtered.length, 250)}. Для точного выбора уточни поиск.`;
+    results.textContent = '';
+    for (const chat of filtered.slice(0, 250)) {
+      const button = document.createElement('button');
+      button.className = 'result';
+      const title = document.createElement('b');
+      title.textContent = chat.title || 'Без названия';
+      const small = document.createElement('span');
+      small.textContent = `${ONTOSCore.formattedTime(chat.update_time || chat.create_time)} · ${chat.conversation_id || chat.id || 'ID отсутствует'}`;
+      button.append(title, small);
+      button.addEventListener('click', () => selectChat(chat, button));
+      results.append(button);
+    }
+  }
+  function selectChat(chat, button) {
+    selected = null; selectedModel = null;
+    Array.from(results.children).forEach(el => el.classList.remove('chosen'));
+    button.classList.add('chosen');
+    try {
+      const model = ONTOSCore.normalizeConversation(chat);
+      selected = chat;
+      selectedModel = model;
+      details.hidden = false;
+      $('chatTitle').textContent = model.title;
+      $('chatInfo').textContent = `ID: ${model.id} · Источник: ${chat.__ontos_source_file || 'файл экспорта'}`;
+      $('metrics').textContent = `В HTML: ${model.visibleMessages} текстовых сообщений · Основная ветка: ${model.pathMessages} · Всего исходных: ${model.sourceMessages} · Другие ветки: ${model.branchMessages} · Служебных: ${model.serviceMessages} · Нетекстовых ссылок: ${model.nonTextCount}`;
+      $('warnings').textContent = model.warnings.length ? model.warnings.join('\n') : 'Структура активной ветки проверена, усечения по прокрутке нет.';
+    } catch (error) {
+      details.hidden = true;
+      setStatus('Выбранная беседа не прошла проверку: ' + error.message, true);
+    }
+  }
+  $('open').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {importFiles(Array.from(fileInput.files)); fileInput.value = '';});
+  ['dragenter','dragover'].forEach(eventName => drop.addEventListener(eventName, e => {e.preventDefault();drop.classList.add('drag');}));
+  ['dragleave','drop'].forEach(eventName => drop.addEventListener(eventName, e => {e.preventDefault();drop.classList.remove('drag');}));
+  drop.addEventListener('drop', e => {if (e.dataTransfer && e.dataTransfer.files) importFiles(Array.from(e.dataTransfer.files));});
+  search.addEventListener('input', renderList);
+  $('html').addEventListener('click', () => {
+    if (!selectedModel) return;
+    const name = ONTOSCore.safeSlug(selectedModel.title) + '_' + (selectedModel.id || 'archive').slice(0, 8);
+    ONTOSCore.downloadText(ONTOSCore.renderHTML(selectedModel), name + '.html', 'text/html;charset=utf-8');
+  });
+  $('markdown').addEventListener('click', () => {
+    if (!selectedModel) return;
+    const name = ONTOSCore.safeSlug(selectedModel.title) + '_' + (selectedModel.id || 'archive').slice(0, 8);
+    ONTOSCore.downloadText(ONTOSCore.renderMarkdown(selectedModel), name + '.md', 'text/markdown;charset=utf-8');
+  });
+  $('json').addEventListener('click', () => {
+    if (!selected) return;
+    const name = ONTOSCore.safeSlug(selectedModel.title) + '_' + (selectedModel.id || 'archive').slice(0, 8);
+    const cleaned = Object.assign({}, selected);
+    delete cleaned.__ontos_source_file;
+    ONTOSCore.downloadText(JSON.stringify(cleaned, null, 2), name + '.json', 'application/json;charset=utf-8');
+  });
+})();
+</script>
+</body></html>

@@ -1,0 +1,31 @@
+# User exports and local test data MUST stay out of the public repo.
+*.zip
+*.log
+*.har
+*.webm
+*.mp3
+*.wav
+*.m4a
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.pdf
+*.html-export
+
+# Raw conversation exports: keep only explicitly reviewed fixtures in tests/fixtures.
+*.json
+!extension/manifest.json
+!tests/fixtures/*.json
+
+# Local caches and secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+node_modules/
+.DS_Store
+Thumbs.db
+.vscode/

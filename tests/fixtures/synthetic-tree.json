@@ -1,0 +1,12 @@
+{
+  "title": "Synthetic conversation tree",
+  "conversation_id": "00000000-0000-4000-8000-000000000002",
+  "current_node": "node-c",
+  "mapping": {
+    "node-root": {"id": "node-root", "parent": null, "children": ["node-a"], "message": null},
+    "node-a": {"id": "node-a", "parent": "node-root", "children": ["node-b", "node-alt"], "message": {"id": "synthetic-user", "author": {"role": "user"}, "content": {"content_type": "text", "parts": ["Synthetic question"]}}},
+    "node-b": {"id": "node-b", "parent": "node-a", "children": ["node-c"], "message": {"id": "synthetic-b", "author": {"role": "assistant"}, "recipient": "all", "content": {"content_type": "text", "parts": ["Accepted answer"]}}},
+    "node-c": {"id": "node-c", "parent": "node-b", "children": [], "message": {"id": "synthetic-c", "author": {"role": "user"}, "content": {"content_type": "text", "parts": ["Follow-up"]}}},
+    "node-alt": {"id": "node-alt", "parent": "node-a", "children": [], "message": {"id": "synthetic-alt", "author": {"role": "assistant"}, "recipient": "all", "content": {"content_type": "text", "parts": ["Unused alternative branch"]}}}
+  }
+}
