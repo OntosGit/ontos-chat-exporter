@@ -143,4 +143,43 @@ class LocalPilot(unittest.TestCase):
         self.assertEqual(code,0)
         self.assertEqual(json.loads(out.getvalue())['status'],'imported')
 
+
+    def test_16_genealogy_across_two_conversations(self):
+        p=self.archive([tree(),tree(CID2)])
+        m.import_file(self.conn,p)
+        candidates=m.discover(self.conn,100)
+        c1=next(x for x in candidates if x['conversation_id']==CID)
+        c2=next(x for x in candidates if x['conversation_id']==CID2)
+        m.record_architecture(self.conn,'ARCH-BEACON','Маяки','researching',c1['candidate_id'],'Первичный замысел')
+        ref=self.conn.execute('SELECT revision_id FROM candidates WHERE id=?',(c2['candidate_id'],)).fetchone()[0]
+        self.conn.execute('INSERT INTO evidence(architecture_id,revision_id,relation) VALUES (?,?,?)',('ARCH-BEACON',ref,'development'))
+        self.conn.execute('INSERT INTO external_links(architecture_id,kind,url,observation) VALUES (?,?,?,?)',('ARCH-BEACON','github','https://github.com/OntosGit/ONTOS.NODE/pull/155','requires runtime check'))
+        proof=m.architecture_details(self.conn,'ARCH-BEACON')
+        self.assertEqual(len(proof['evidence']),2)
+        self.assertEqual(len({x['conversation_id'] for x in proof['evidence']}),2)
+        self.assertEqual(proof['external_links'][0]['kind'],'github')
+
+    def test_17_main_attach_and_link(self):
+        m.import_file(self.conn,self.archive(tree()))
+        cs=m.discover(self.conn,20)
+        m.record_architecture(self.conn,'ARCH-001','Маяки','researching',cs[0]['candidate_id'],'')
+        stdout=io.StringIO()
+        with redirect_stdout(stdout):
+            self.assertEqual(m.main(['--db',str(self.db),'attach','--id','ARCH-001','--candidate',cs[1]['candidate_id']]),0)
+        self.assertEqual(len(json.loads(stdout.getvalue())['evidence']),2)
+        stdout=io.StringIO()
+        with redirect_stdout(stdout):
+            self.assertEqual(m.main(['--db',str(self.db),'link','--id','ARCH-001','--kind','github','--url','https://github.com/OntosGit/ONTOS.NODE']),0)
+        self.assertEqual(json.loads(stdout.getvalue())['external_links'][0]['kind'],'github')
+
+    def test_18_older_snapshot_does_not_replace_newer(self):
+        newer=tree();newer['update_time']=2000000000
+        m.import_file(self.conn,self.archive(newer,'new.json'))
+        old=tree();old['update_time']=1790000000
+        old['mapping']['m1']['message']['content']['parts']=['Старая версия другого содержания']
+        m.import_file(self.conn,self.archive(old,'old.json'))
+        self.assertEqual(len(m.search(self.conn,'маяков',20)),1)
+        self.assertEqual(len(m.search(self.conn,'Старая',20)),0)
+        self.assertEqual(m.summary(self.conn)['snapshots'],2)
+
 if __name__=='__main__':unittest.main()
