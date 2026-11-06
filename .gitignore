@@ -29,3 +29,11 @@ node_modules/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Private local archaeology indexes, snapshots, and credentials
+private/
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
