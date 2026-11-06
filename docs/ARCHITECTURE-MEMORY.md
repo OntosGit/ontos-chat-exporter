@@ -16,7 +16,7 @@
 
 ```powershell
 py -3 tools/ontos_memory.py --db private/ontos-memory.sqlite3 init
-py -3 tools/ontos_memory.py --db private/ontos-memory.sqlite3 import "C:\\Users\\kontr\\Downloads\\chatgpt-export.zip"
+py -3 tools/ontos_memory.py --db private/ontos-memory.sqlite3 import "$env:USERPROFILE\Downloads\chatgpt-export.zip"
 py -3 tools/ontos_memory.py --db private/ontos-memory.sqlite3 stats
 py -3 tools/ontos_memory.py --db private/ontos-memory.sqlite3 search "архитектура"
 py -3 tools/ontos_memory.py --db private/ontos-memory.sqlite3 discover --limit 30
