@@ -22,6 +22,14 @@
     catch (_) { /* Popup can close while pages continue to be stored. */ }
   }
   let busy = false;
+  // A popup in another tab cannot see this tab's "busy" flag. Browser Web Locks
+  // serialize exports and resets for a conversation across all chatgpt.com tabs.
+  async function withConversationLock(id, callback) {
+    const locks = globalThis.navigator && globalThis.navigator.locks;
+    if (!locks || typeof locks.request !== 'function')
+      throw new Error('Межвкладочная блокировка недоступна. Обнови браузер перед выгрузкой или сбросом.');
+    return locks.request('ontos-chat-exporter:conversation:' + id, {mode:'exclusive'}, callback);
+  }
   async function doExport(format, maxPages) {
     if (busy) throw new Error('Экспорт уже выполняется в этой вкладке.');
     if (!isChatGPTHost()) throw new Error('Открыта страница другого сайта.');
@@ -32,6 +40,7 @@
     if (!['html','json','md'].includes(format)) throw new Error('Неизвестный формат.');
     busy = true;
     try {
+      return await withConversationLock(id, async () => {
       progress('Читаю сохранённые страницы и продолжаю выгрузку…');
       const data = await globalThis.ONTOSLive.fetchConversation(id, progress, {maxPages});
       if (data.ontos_paused) {
@@ -56,6 +65,7 @@
         structurallyChecked:model.verified,
         checkpoint:await globalThis.ONTOSLive.status(id)
       };
+      });
     } finally { busy = false; }
   }
   chrome.runtime.onMessage.addListener((request, _sender, reply) => {
@@ -67,8 +77,11 @@
         if (busy) throw new Error('Нельзя сбросить страницы во время активной выгрузки.');
         const id = idFromPath(location.pathname);
         if (!id) throw new Error('Открой конкретную беседу для сброса её контрольных точек.');
-        await globalThis.ONTOSLive.reset(id);
-        return {ok:true};
+        busy = true;
+        try {
+          await withConversationLock(id, () => globalThis.ONTOSLive.reset(id));
+          return {ok:true};
+        } finally { busy = false; }
       }
       return doExport(request.format, request.maxPages);
     }).then(reply, error => reply({ok:false,message:String(error && error.message || error).slice(0,1200)}));
