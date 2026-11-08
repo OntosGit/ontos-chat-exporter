@@ -4,7 +4,7 @@
 
 A small, open-source extension for Chromium-based browsers (tested in Microsoft Edge). It reads the **currently active conversation**, including chats inside ChatGPT projects, and saves a local file. No hosted account, analytics, third-party upload, or OpenAI API key required.
 
-**Status:** experimental, version 1.3.1. Verified on one real export on 30 October 2026 and tested offline with synthetic fixtures. This is **not an official OpenAI product**. ChatGPT's internal endpoints can change without notice.
+**Status:** experimental, version 1.4.0. Version 1.3.1 was verified on one real export on 30 October 2026. Version 1.4.0 resumability is covered by offline synthetic tests and awaits live long-chat verification. This is **not an official OpenAI product**. ChatGPT's internal endpoints can change without notice.
 
 [Русская инструкция](README.ru.md)
 
@@ -27,10 +27,19 @@ The code downloads **one conversation**, not all tabs or your entire account. Br
 3. Enable **Developer mode** and click **Load unpacked**.
 4. Select the **`extension/`** folder containing `manifest.json`.
 5. Open the ChatGPT conversation you want to save and refresh the tab (`Ctrl+R`).
-6. Click the extension icon and choose **Download conversation as Markdown**, **Save HTML**, or **Save raw JSON**.
+6. Select **5, 8, 20 pages per batch or continuous**. When the batch ends or the server rate-limits the request, click **Resume** after any displayed cooldown. Then choose **Download conversation as Markdown**, **Save HTML**, or **Save raw JSON**.
 7. Find your file in the browser downloads (`Ctrl+J`).
 
 If the extension shows `Blocked`, check Edge's **per-site extension access setting** for `chatgpt.com`. In Edge, extensions may be disabled for a site even when the extension itself is enabled. Do not disable global browser security settings.
+
+## Resumable downloads (v1.4)
+
+- Successful pages are written to private extension storage **before** advancing the pagination cursor. Refreshing the tab or reopening the popup resumes from the saved checkpoint for that conversation.
+- HTTP **429** preserves all previously saved pages. The extension honors `Retry-After` when present, otherwise imposes exponential cooldown from 1 to 15 minutes. It respects rate limits; it does not bypass them.
+- Choose 5, 8, 20, or unlimited pages per button press. The archive is marked complete only after server end-cursors, duplicate-ID checks, and normalization succeed.
+- Once complete, Markdown/HTML/JSON can be generated repeatedly from the local cache without refetching. Use **Reset saved pages** when you want to capture edits or new messages in a conversation.
+- Checkpoints are local to the browser profile and extension installation. Reset or uninstall deletes them; large chats consume disk space. Download the final archive to keep an independent copy.
+- An HTTP 429 before the first usable page provides nothing to checkpoint. Browser-level network failures, changed private endpoints, and a paginated `mapping` response can still prevent a complete export.
 
 ## Local Reader
 
@@ -49,8 +58,8 @@ The Reader supports this extension's one-conversation JSON and many conventional
 
 ## Privacy and permissions
 
-- Manifest v3, `activeTab` and `https://chatgpt.com/*` host access only.
-- No extension backend, telemetry, cookies storage, microphone recording, tab audio capture, or third-party network requests.
+- Manifest v3, `activeTab`, `storage`, `unlimitedStorage`, and `https://chatgpt.com/*` host access only.
+- No extension backend, telemetry, microphone recording, tab audio capture, or third-party network requests. Conversation pages are cached in local extension storage; session tokens are not persisted.
 - The extension calls ChatGPT's first-party session endpoint and first-party conversation endpoints within your signed-in browser session, then downloads a file locally.
 - Technical JSON can contain far more data than the visible chat. **Do not commit real exported conversations to public repositories.**
 
