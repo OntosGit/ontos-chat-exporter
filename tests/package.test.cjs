@@ -19,7 +19,7 @@ test('manifest declares minimal permissions, no capture or tracking capabilities
 test('popup chooses the active tab only',()=>{
   const source=text('extension/popup.js');
   assert.ok(source.includes('active:true, currentWindow:true'));
-  assert.ok(source.includes("ping.version !== '1.4.0'"));
+  assert.ok(source.includes("reply.version !== '1.4.0'"));
 });
 
 test('Reader shares the same pure conversation core as the extension',()=>{
