@@ -1,20 +1,14 @@
-/* ONTOS Chat Exporter. Runs in the signed-in ChatGPT tab, never sends data to third-party hosts. */
+/* ONTOS Chat Exporter 1.4. Fetches authenticated first-party pages and checkpoints every page. */
 (function (root) {
   'use strict';
-  const allow = host => host === 'chatgpt.com' || host === 'www.chatgpt.com';
+  const allow = host => host === 'chatgpt.com';
+  const pause = (state, reason) => ({ontos_paused:true, reason, checkpoint:root.ONTOSCheckpoints.stats(state)});
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   function unwrap(value) {
     if (!value || typeof value !== 'object') return value;
     if (value.data && (Array.isArray(value.data.messages) || value.data.mapping)) return value.data;
     if (value.conversation && (Array.isArray(value.conversation.messages) || value.conversation.mapping)) return value.conversation;
     return value;
-  }
-  function addStatus() {
-    const el = document.createElement('div');
-    el.id = 'ontos-chat-export-progress';
-    el.setAttribute('role', 'status');
-    el.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:2147483647;max-width:370px;padding:15px 18px;background:#10212b;color:#e7f6f9;border:1px solid #3e7786;border-radius:12px;box-shadow:0 15px 35px #0008;font:14px/1.5 system-ui, sans-serif;white-space:pre-wrap';
-    document.body.appendChild(el);
-    return {update: text => {el.textContent = 'ONTOS · ' + text;}, finish: () => {setTimeout(() => el.remove(), 15000);}};
   }
   async function sessionHeaders() {
     const headers = {'Accept':'application/json'};
@@ -28,138 +22,112 @@
     } catch (_) { /* Cookie-only authentication can still work. */ }
     return headers;
   }
+  function retryAfterMs(response) {
+    const value = response.headers && response.headers.get && response.headers.get('Retry-After');
+    if (!value) return undefined;
+    const number = Number(value);
+    if (Number.isFinite(number) && number >= 0) return Math.min(24 * 60 * 60_000, number * 1000);
+    const date = Date.parse(value);
+    return Number.isFinite(date) ? Math.max(0, date - Date.now()) : undefined;
+  }
   async function requestJSON(path, headers) {
     if (!path.startsWith('/backend-api/')) throw new Error('Запрещён адрес за пределами ChatGPT.');
     const url = new URL(path, location.origin);
     if (!allow(url.hostname)) throw new Error('Запрещён внешний адрес запроса.');
-    for (let attempt = 0; attempt < 3; attempt++) {
-      let response;
-      try { response = await fetch(url.href, {method:'GET', headers, credentials:'include', cache:'no-store'}); }
-      catch (error) {throw new Error('Не удалось подключиться к ChatGPT: ' + error.message);}
-      if (response.status === 429 && attempt < 2) {
-        await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 2500));
-        continue;
-      }
-      if (!response.ok) {
-        const error = new Error(`ChatGPT вернул HTTP ${response.status}.`);
-        error.status = response.status;
-        throw error;
-      }
-      try {return unwrap(await response.json());}
-      catch (_) {throw new Error('ChatGPT прислал ответ, который нельзя разобрать как JSON.');}
-    }
-    throw new Error('ChatGPT ограничил частоту запросов.');
-  }
-  function paginationInfo(data) {
-    const page = data.page_info;
-    if (!page || typeof page !== 'object') throw new Error('Сервер не вернул page_info; проверить полноту постраничной истории нельзя.');
-    return page;
-  }
-  async function fetchConversation(id, onProgress) {
-    if (!allow(location.hostname)) throw new Error('Открой беседу на chatgpt.com.');
-    if (!/^[a-z0-9-]{16,128}$/i.test(id)) throw new Error('Неверный идентификатор разговора.');
-    const headers = await sessionHeaders();
-    let base = null;
-    let endpoint = 'conversations';
-    for (const name of ['conversations', 'conversation']) {
-      try {
-        base = await requestJSON(`/backend-api/${name}/${encodeURIComponent(id)}?num_turns=100`, headers);
-        endpoint = name;
-        break;
-      } catch (error) {
-        if (error.status !== 404 && error.status !== 405) throw error;
-      }
-    }
-    if (!base) throw new Error('История разговора недоступна через текущий интерфейс ChatGPT.');
-    if (base.mapping) {
-      if (base.page_info && (base.page_info.has_previous_page || base.page_info.has_next_page))
-        throw new Error('Дерево сообщений пришло постранично; полноту подтвердить нельзя.');
-      root.ONTOSCore.normalizeConversation(base); // fail closed on broken parent chain
-      return base;
-    }
-    let messagesEndpoint = null;
-    if (!Array.isArray(base.messages)) {
-      messagesEndpoint = `/backend-api/conversations/${encodeURIComponent(id)}/messages`;
-      const msgPart = await requestJSON(`${messagesEndpoint}?num_turns=100&include_has_versions=true`, headers);
-      if (!Array.isArray(msgPart.messages)) throw new Error('Сервер изменил формат истории сообщений.');
-      base = Object.assign({}, base, msgPart, {
-        title: base.title || msgPart.title, conversation_id: base.conversation_id || id,
-        current_node: msgPart.current_node || base.current_node
-      });
-    }
-    const paged = paginationInfo(base);
-    const prefix = messagesEndpoint || `/backend-api/${endpoint}/${encodeURIComponent(id)}`;
-    const pageURL = (direction, cursor) => `${prefix}?num_turns=100${messagesEndpoint ? '&include_has_versions=true' : ''}&${direction}=${encodeURIComponent(cursor)}`;
-    const initial = base.messages;
-    const older = [];
-    const newer = [];
-    const seenCursors = new Set();
-    let pointer = paged;
-    let pageNumber = 1;
-    while (pointer.has_previous_page === true) {
-      const cursor = pointer.start_cursor;
-      if (!cursor || seenCursors.has('before:' + cursor)) throw new Error('Пагинация зациклилась или лишена указателя начала страницы.');
-      seenCursors.add('before:' + cursor);
-      const chunk = await requestJSON(pageURL('before', cursor), headers);
-      if (!Array.isArray(chunk.messages) || chunk.messages.length === 0) throw new Error('Получена пустая промежуточная страница: история неполная.');
-      older.unshift(...chunk.messages);
-      pointer = paginationInfo(chunk);
-      pageNumber++;
-      onProgress(`Прочитано страниц: ${pageNumber}. Сообщений: ${older.length + initial.length + newer.length}`);
-      if (pageNumber > 2000) throw new Error('Слишком много страниц: остановка для защиты от бесконечной загрузки.');
-    }
-    pointer = paged;
-    while (pointer.has_next_page === true) {
-      const cursor = pointer.end_cursor;
-      if (!cursor || seenCursors.has('after:' + cursor)) throw new Error('Пагинация зациклилась или лишена указателя конца страницы.');
-      seenCursors.add('after:' + cursor);
-      const chunk = await requestJSON(pageURL('after', cursor), headers);
-      if (!Array.isArray(chunk.messages) || chunk.messages.length === 0) throw new Error('Получена пустая последующая страница: история неполная.');
-      newer.push(...chunk.messages);
-      pointer = paginationInfo(chunk);
-      pageNumber++;
-      onProgress(`Прочитано страниц: ${pageNumber}. Сообщений: ${older.length + initial.length + newer.length}`);
-      if (pageNumber > 2000) throw new Error('Слишком много страниц: остановка для защиты от бесконечной загрузки.');
-    }
-    const all = older.concat(initial, newer);
-    const ids = all.map(m => (m && m.message ? m.message.id : m && m.id)).filter(Boolean);
-    if (new Set(ids).size !== ids.length) throw new Error('Перекрывающиеся страницы: повторяются сообщения; результат не будет сохранён как полный.');
-    return Object.assign({}, base, {
-      messages: all,
-      conversation_id: base.conversation_id || id,
-      page_info: {has_previous_page: false, has_next_page: false},
-      ontos_pagination_audit: {pages: pageNumber, source: prefix, message_count: all.length}
-    });
-  }
-  async function exportCurrent(format = 'html') {
-    const id = (location.pathname.match(/\/c\/([a-z0-9-]{16,128})(?:\/|$)/i) || [])[1];
-    if (!id) throw new Error('Сначала открой конкретную беседу ChatGPT (адрес с /c/...).');
-    const toast = addStatus();
-    try {
-      toast.update('Получаю сообщения напрямую из истории, а не из прокручиваемой страницы…');
-      const data = await fetchConversation(id, toast.update);
-      toast.update('Проверяю последовательность и формирую файл…');
-      const model = root.ONTOSCore.normalizeConversation(data);
-      const basename = root.ONTOSCore.safeSlug(model.title) + '_' + id.slice(0, 8);
-      let name;
-      if (format === 'html') {
-        name = basename + '.html';
-        root.ONTOSCore.downloadText(root.ONTOSCore.renderHTML(model), name, 'text/html;charset=utf-8');
-      } else if (format === 'md') {
-        name = basename + '.md';
-        root.ONTOSCore.downloadText(root.ONTOSCore.renderMarkdown(model), name, 'text/markdown;charset=utf-8');
-      } else if (format === 'json') {
-        name = basename + '.json';
-        root.ONTOSCore.downloadText(JSON.stringify(data, null, 2), name, 'application/json;charset=utf-8');
-      } else throw new Error('Неизвестный формат сохранения.');
-      toast.update(`Готово. ${model.visibleMessages} видимых сообщений. Файл скачан.`);
-      toast.finish();
-      return {ok:true, name, visible:model.visibleMessages, path:model.pathMessages, source:model.sourceMessages, attachments:model.nonTextCount};
-    } catch (error) {
-      toast.update('Ошибка: ' + (error && error.message || 'Неизвестная ошибка'));
-      toast.finish();
+    let response;
+    try { response = await fetch(url.href, {method:'GET', headers, credentials:'include', cache:'no-store'}); }
+    catch (error) {throw new Error('Не удалось подключиться к ChatGPT: ' + error.message);}
+    if (!response.ok) {
+      const error = new Error(`ChatGPT вернул HTTP ${response.status}.`);
+      error.status = response.status;
+      if (response.status === 429) error.retryAfterMs = retryAfterMs(response);
       throw error;
     }
+    try {return unwrap(await response.json());}
+    catch (_) {throw new Error('ChatGPT прислал ответ, который нельзя разобрать как JSON.');}
   }
-  root.ONTOSLive = {fetchConversation, exportCurrent};
+  async function fetchConversation(id, onProgress = () => {}, options = {}) {
+    if (!allow(location.hostname)) throw new Error('Открой беседу на chatgpt.com.');
+    if (!/^[a-z0-9-]{16,128}$/i.test(id)) throw new Error('Неверный идентификатор разговора.');
+    const store = root.ONTOSCheckpoints;
+    let state = await store.get(id);
+    if (state && state.status === 'complete') {
+      onProgress(`Восстанавливаю готовый архив из ${state.pageCount} сохранённых страниц…`);
+      return store.assemble(state);
+    }
+    if (state && state.retryAt > Date.now()) return pause(state, 'rate_limit');
+    const headers = await sessionHeaders();
+    if (!state) {
+      let base = null;
+      let endpoint = 'conversations';
+      for (const name of ['conversations', 'conversation']) {
+        try {
+          base = await requestJSON(`/backend-api/${name}/${encodeURIComponent(id)}?num_turns=100`, headers);
+          endpoint = name;
+          break;
+        } catch (error) {
+          if (error.status !== 404 && error.status !== 405) throw error;
+        }
+      }
+      if (!base) throw new Error('История разговора недоступна через текущий интерфейс ChatGPT.');
+      if (base.mapping) {
+        if (base.page_info && (base.page_info.has_previous_page || base.page_info.has_next_page))
+          throw new Error('Дерево сообщений пришло постранично; полноту подтвердить нельзя.');
+        root.ONTOSCore.normalizeConversation(base);
+        return base;
+      }
+      let prefix = `/backend-api/${endpoint}/${encodeURIComponent(id)}`;
+      if (!Array.isArray(base.messages)) {
+        prefix = `/backend-api/conversations/${encodeURIComponent(id)}/messages`;
+        const part = await requestJSON(`${prefix}?num_turns=100&include_has_versions=true`, headers);
+        if (!Array.isArray(part.messages)) throw new Error('Сервер изменил формат истории сообщений.');
+        base = Object.assign({}, base, part, {
+          title: base.title || part.title, conversation_id: base.conversation_id || id,
+          current_node: part.current_node || base.current_node
+        });
+      }
+      state = await store.start(id, base, prefix);
+      onProgress(`Сохранена первая страница: ${state.messageCount} сообщений.`);
+    } else {
+      onProgress(`Продолжаю с ${state.pageCount} сохранённых страниц, ${state.messageCount} сообщений…`);
+    }
+    // Unlimited if called by tests/integrations; popup selects an explicit per-click batch size.
+    const requested = Number(options.maxPages);
+    const budget = Number.isInteger(requested) && requested > 0 ? Math.min(requested, 250) : Infinity;
+    let downloaded = 0;
+    while (state.older.more || state.newer.more) {
+      if (downloaded >= budget) return pause(state, 'batch_limit');
+      if (state.pageCount >= 2000) throw new Error('Слишком много страниц: защита от бесконечной загрузки.');
+      const direction = state.older.more ? 'before' : 'after';
+      const cursor = direction === 'before' ? state.older.cursor : state.newer.cursor;
+      const already = direction === 'before' ? state.seenBefore : state.seenAfter;
+      if (!cursor || already.includes(cursor)) throw new Error('Пагинация зациклилась или лишена указателя страницы.');
+      const suffix = state.prefix.endsWith('/messages') ? '&include_has_versions=true' : '';
+      const url = `${state.prefix}?num_turns=100${suffix}&${direction}=${encodeURIComponent(cursor)}`;
+      // Request pacing is independent of the popup lifetime.
+      if (downloaded > 0) await sleep(900);
+      let chunk;
+      try { chunk = await requestJSON(url, headers); }
+      catch (error) {
+        if (error.status === 429) {
+          state = await store.rateLimited(state, error.retryAfterMs);
+          onProgress(`HTTP 429. ${state.pageCount} страниц сохранены; продолжение после ограничения сервера.`);
+          return pause(state, 'rate_limit');
+        }
+        throw error; // All previously committed pages remain on disk.
+      }
+      state = await store.addPage(state, direction, cursor, chunk);
+      downloaded++;
+      onProgress(`Сохранено страниц: ${state.pageCount}. Сообщений: ${state.messageCount}.`);
+    }
+    onProgress(`Все ${state.pageCount} страниц сохранены. Проверяю структуру…`);
+    // Verify the assembled message sequence before marking the checkpoint complete.
+    const assembled = await store.assemble({...state, status:'complete'});
+    root.ONTOSCore.normalizeConversation(assembled);
+    await store.finished(state);
+    return assembled;
+  }
+  async function status(id) { return root.ONTOSCheckpoints.stats(await root.ONTOSCheckpoints.get(id)); }
+  async function reset(id) { return root.ONTOSCheckpoints.reset(id); }
+  root.ONTOSLive = {fetchConversation, status, reset};
 })(globalThis);

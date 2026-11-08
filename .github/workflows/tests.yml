@@ -1,0 +1,21 @@
+name: ONTOS Chat Exporter Tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate extension and run synthetic tests
+        run: |
+          node --check extension/checkpoints.js
+          node --check extension/live.js
+          node --check extension/content.js
+          node --check extension/popup.js
+          node --test tests/*.test.cjs
