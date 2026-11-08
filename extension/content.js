@@ -1,39 +1,42 @@
 'use strict';
-/* ONTOS: declarative content script. No chrome.scripting.executeScript is used. */
+/* ONTOS: declarative content script; progress survives closing the popup. */
 (() => {
-  const SCRIPT_VERSION = '1.3.1';
+  const SCRIPT_VERSION = '1.4.0';
   const isChatGPTHost = () => location.hostname === 'chatgpt.com';
   function idFromPath(pathname) {
-    // Ordinary: /c/<uuid>; project: /g/g-p-.../c/<uuid>.
-    // Use the final /c/ component; project path does not have to be fixed.
     const match = pathname.match(/(?:^|\/)c\/([a-z0-9-]{16,128})(?:\/|$)/i);
     return match ? match[1] : '';
   }
-  const describe = () => ({
-    version: SCRIPT_VERSION,
-    host: location.hostname,
-    path: location.pathname,
-    conversationId: idFromPath(location.pathname),
-    core: Boolean(globalThis.ONTOSCore),
-    live: Boolean(globalThis.ONTOSLive)
-  });
+  async function describe() {
+    const conversationId = idFromPath(location.pathname);
+    return {
+      version: SCRIPT_VERSION, host: location.hostname, path: location.pathname,
+      conversationId, core: Boolean(globalThis.ONTOSCore),
+      live: Boolean(globalThis.ONTOSLive),
+      checkpoint: conversationId && globalThis.ONTOSLive ?
+        await globalThis.ONTOSLive.status(conversationId) : null
+    };
+  }
   function progress(message) {
-    try { chrome.runtime.sendMessage({kind:'ONTOS_PROGRESS', text: message}).catch(() => {}); }
-    catch (_) { /* popup can close while export continues */ }
+    try { chrome.runtime.sendMessage({kind:'ONTOS_PROGRESS', text:message}).catch(() => {}); }
+    catch (_) { /* Popup can close while pages continue to be stored. */ }
   }
   let busy = false;
-  async function doExport(format) {
+  async function doExport(format, maxPages) {
     if (busy) throw new Error('Экспорт уже выполняется в этой вкладке.');
     if (!isChatGPTHost()) throw new Error('Открыта страница другого сайта.');
     const id = idFromPath(location.pathname);
     if (!id) throw new Error('Не найден адрес беседы (/c/...). Открой конкретный разговор внутри ChatGPT.');
-    if (!globalThis.ONTOSCore || !globalThis.ONTOSLive)
+    if (!globalThis.ONTOSCore || !globalThis.ONTOSLive || !globalThis.ONTOSCheckpoints)
       throw new Error('Обработчик расширения загружен не полностью. Обнови вкладку.');
-    if (!['html', 'json', 'md'].includes(format)) throw new Error('Неизвестный формат.');
+    if (!['html','json','md'].includes(format)) throw new Error('Неизвестный формат.');
     busy = true;
     try {
-      progress('Соединение с историей ChatGPT…');
-      const data = await globalThis.ONTOSLive.fetchConversation(id, progress);
+      progress('Читаю сохранённые страницы и продолжаю выгрузку…');
+      const data = await globalThis.ONTOSLive.fetchConversation(id, progress, {maxPages});
+      if (data.ontos_paused) {
+        return {ok:true, complete:false, reason:data.reason, checkpoint:data.checkpoint};
+      }
       progress('Проверяю цепочку сообщений…');
       const model = globalThis.ONTOSCore.normalizeConversation(data);
       const base = globalThis.ONTOSCore.safeSlug(model.title) + '_' + id.slice(0,8);
@@ -47,26 +50,28 @@
         globalThis.ONTOSCore.downloadText(JSON.stringify(data, null, 2), filename, 'application/json;charset=utf-8');
       }
       return {
-        ok: true, filename,
-        visible: model.visibleMessages,
-        source: model.sourceMessages,
-        alternate: model.branchMessages,
-        nonText: model.nonTextCount,
-        structurallyChecked: model.verified
+        ok:true, complete:true, filename,
+        visible:model.visibleMessages, source:model.sourceMessages,
+        alternate:model.branchMessages, nonText:model.nonTextCount,
+        structurallyChecked:model.verified,
+        checkpoint:await globalThis.ONTOSLive.status(id)
       };
     } finally { busy = false; }
   }
   chrome.runtime.onMessage.addListener((request, _sender, reply) => {
     if (!request || typeof request !== 'object') return false;
-    if (request.kind === 'ONTOS_PING') {
-      reply({ok:true, ...describe()});
-      return false;
-    }
-    if (request.kind !== 'ONTOS_EXPORT') return false;
-    Promise.resolve().then(() => doExport(request.format)).then(
-      result => reply(result),
-      error => reply({ok:false, message:String(error && error.message || error).slice(0,1200)})
-    );
+    if (!['ONTOS_PING','ONTOS_EXPORT','ONTOS_RESET'].includes(request.kind)) return false;
+    Promise.resolve().then(async () => {
+      if (request.kind === 'ONTOS_PING') return {ok:true, ...await describe()};
+      if (request.kind === 'ONTOS_RESET') {
+        if (busy) throw new Error('Нельзя сбросить страницы во время активной выгрузки.');
+        const id = idFromPath(location.pathname);
+        if (!id) throw new Error('Открой конкретную беседу для сброса её контрольных точек.');
+        await globalThis.ONTOSLive.reset(id);
+        return {ok:true};
+      }
+      return doExport(request.format, request.maxPages);
+    }).then(reply, error => reply({ok:false,message:String(error && error.message || error).slice(0,1200)}));
     return true;
   });
 })();
