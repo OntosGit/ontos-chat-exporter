@@ -10,15 +10,24 @@ const message = id => ({id, author:{role:'user'}, content:{content_type:'text', 
 const ok = data => ({status:200, ok:true, json:async()=>data});
 const bad = status => ({status, ok:false, json:async()=>({})});
 function create(fetchImpl) {
+  const cache = new Map();
+  const local = {
+    get: async keys => Object.fromEntries((Array.isArray(keys) ? keys : [keys]).filter(k => cache.has(k)).map(k => [k, cache.get(k)])),
+    set: async obj => { for (const [key, value] of Object.entries(obj)) cache.set(key, value); },
+    remove: async keys => { for (const key of keys) cache.delete(key); },
+    getKeys: async () => [...cache.keys()]
+  };
   const sandbox = {
     Date, String, Object, Number, Set, Array, URL, console,
     fetch: fetchImpl, setTimeout, clearTimeout,
+    chrome: {storage: {local}},
     location: {hostname:'chatgpt.com', origin:'https://chatgpt.com', pathname:'/c/'+ID},
     document: {createElement:()=>({style:{}, setAttribute(){},append(){},remove(){}}), body:{appendChild(){}}}
   };
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(path.join(base,'extension/core.js'),'utf8'), sandbox);
+  vm.runInContext(fs.readFileSync(path.join(base,'extension/checkpoints.js'),'utf8'), sandbox);
   vm.runInContext(fs.readFileSync(path.join(base,'extension/live.js'),'utf8'), sandbox);
   return sandbox.ONTOSLive;
 }
