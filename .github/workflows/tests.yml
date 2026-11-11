@@ -1,7 +1,9 @@
 name: ONTOS Chat Exporter Tests
 on:
-  push:
-  pull_request:
+  # Automatic owner-reviewed tests run through the existing Runner25
+  # with exact-source ontos/portfolio-runner25 status on the source commit.
+  # Do not schedule hosted Ubuntu on every PR or push.
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
