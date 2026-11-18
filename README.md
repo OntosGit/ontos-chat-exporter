@@ -84,3 +84,7 @@ If you use it, a GitHub ⭐ helps other people find it. Bug reports, compatibili
 MIT, see [LICENSE](LICENSE).
 
 **Disclaimer:** Independent community tool; not endorsed by or affiliated with OpenAI. “ChatGPT” is a trademark of its respective owner.
+
+## Local architecture archaeology (pilot)
+
+The optional [ONTOS Memory pilot](docs/ARCHITECTURE-MEMORY.md) imports official ChatGPT ZIP / single-conversation JSON into **private local SQLite**, supports full-text search, flags candidate ideas from user messages, and records evidence-linked architecture histories. No cloud upload, OpenAI API, or automatic Todoist changes. Run `python tools/ontos_memory.py --help`.

@@ -1,0 +1,54 @@
+{
+  "recorded_at": "2026-11-18 04:30:59 UTC",
+  "verification": "Exact Git blob/tree identity binds previously executed local source tests to this source commit. No tests were rerun merely to publish evidence.",
+  "native_execution": false,
+  "live_service_calls": false,
+  "schema": "ontos.memory.snapshot-order.publication.v1",
+  "repository": "OntosGit/ontos-chat-exporter",
+  "base_commit": "90b6dd118b55a3452b4692722b125df151b1fd9c",
+  "base_tree": "028f453028b5a6fda6b9c41f6073cf42741e25dd",
+  "source_commit": "ab23ce548a64378ebcd22106a1873c994e72f89c",
+  "qualified_source_tree": "9d75b5a5904f5b6c2a478a8ed56304ca086089be",
+  "patch_sha256": "baa27d63c085b1342e054e21304b98bf2908e2f1f7cc40b4b9d000b62f3702e6",
+  "source_scope": {
+    "base_blobs": 27,
+    "candidate_blobs": 28,
+    "changed_paths": [
+      "docs/ARCHITECTURE-MEMORY.md",
+      "tests/test_ontos_memory.py",
+      "tests/test_snapshot_order.py",
+      "tools/ontos_memory.py"
+    ],
+    "unchanged_base_blobs": 24,
+    "complete_materialization": true
+  },
+  "tests": {
+    "baseline_python": 18,
+    "old_code_new_regressions": {
+      "methods": 4,
+      "expected_failures": 4
+    },
+    "candidate_python": 33,
+    "candidate_node": 17,
+    "skipped": 0,
+    "final_receipt_sha256": "2a1acc41932242788cec286c146da2d51d82fecd6d4da38354d71f9e33b66bea"
+  },
+  "independent_review": {
+    "verdict": "NO_BLOCKING_SOURCE_FINDINGS",
+    "sha256": "0b8843ffc46e3bdc328dcae53ad5e18728ef7bebfebae936591b4bb25238b26e",
+    "path": "independent-review.json"
+  },
+  "archive": {
+    "path": "evidence.json.gz",
+    "sha256": "592ea4689dede478fd18a863e0ec507a7d6e858fb97206db8710b4bb847a0384",
+    "bytes": 34684,
+    "embedded_files": 37
+  },
+  "limits": [
+    "Existing PR #1 remains Draft; its original whole-pilot no-merge boundary is retained until authorized real private archive validation.",
+    "Protects subsequent imports; does not automatically reconstruct already corrupted legacy snapshot selection or unavailable historical timestamps.",
+    "Equal dated or unordered different content is retained in history while the current snapshot is conservatively held.",
+    "Initial Node reporter parsing mismatch is preserved in evidence. Tests themselves passed; corrected harness receipt is the final gate.",
+    "Four executed red methods/helpers match final AST; the exact earlier complete red file is separately preserved."
+  ]
+}
