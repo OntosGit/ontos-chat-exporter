@@ -9,11 +9,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import sqlite3
 import sys
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 SCHEMA = 1
@@ -229,6 +230,24 @@ def load_source(path: Path):
         raise ValueError("Use direct JSON or official export ZIP")
 
 
+def source_timestamp(value: object) -> tuple[float | None, str]:
+    """Normalize source UNIX seconds; unknown dates never establish chronology."""
+    if value is None:
+        return None, "missing"
+    # Keep numeric-string compatibility, but bool is not a source timestamp.
+    if type(value) not in (int, float, str):
+        return None, "invalid"
+    try:
+        parsed = float(value)
+        if not math.isfinite(parsed):
+            return None, "invalid"
+        # Pure UTC arithmetic avoids platform-local clock and time_t limits.
+        datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=parsed)
+    except (TypeError, ValueError, OverflowError):
+        return None, "invalid"
+    return parsed, "known"
+
+
 def import_file(conn: sqlite3.Connection, source: Path) -> dict:
     source = source.expanduser().resolve()
     sha = hashlib.sha256()
@@ -240,10 +259,11 @@ def import_file(conn: sqlite3.Connection, source: Path) -> dict:
             sha.update(chunk)
     raw_sha = sha.hexdigest()
     if conn.execute("SELECT 1 FROM imports WHERE source_hash=?", (raw_sha,)).fetchone():
-        return {"status": "already_imported", "source_sha256": raw_sha, "conversations": 0, "messages": 0}
-    # Validate all conversations before changing DB; duplicate IDs in an archive are updated in sequence.
+        return {"status": "already_imported", "source_sha256": raw_sha, "conversations": 0, "messages": 0, "snapshot_selection": []}
+    # One transaction preserves all-or-nothing import, including duplicate IDs in ZIPs.
     total = 0
     count = 0
+    selection = []
     timestamp = datetime.now(timezone.utc).isoformat()
     with conn:
         for conv in load_source(source):
@@ -266,16 +286,37 @@ def import_file(conn: sqlite3.Connection, source: Path) -> dict:
                     conn.execute("INSERT INTO snapshot_messages(snapshot_id,position,revision_id) VALUES (?,?,?)", (sid, pos, rid))
             else:
                 sid = snap[0]
-            incoming = conv.get("update_time")
-            try:
-                source_time = float(incoming) if incoming is not None else None
-            except (TypeError, ValueError):
-                source_time = None
-            known = conn.execute("SELECT source_updated_at FROM conversations WHERE id=?", (cid,)).fetchone()[0]
-            if known is None or source_time is None or source_time >= known:
+            source_time, time_status = source_timestamp(conv.get("update_time"))
+            current = conn.execute("SELECT current_snapshot,source_updated_at FROM conversations WHERE id=?", (cid,)).fetchone()
+            previous_sid = current["current_snapshot"]
+            known, _ = source_timestamp(current["source_updated_at"])
+            if previous_sid is None:
+                decision = "selected_initial"
+            elif source_time is not None and known is None:
+                decision = "selected_dated"
+            elif source_time is not None and known is not None and source_time > known:
+                decision = "selected_newer"
+            elif sid == previous_sid:
+                decision = "unchanged"
+            elif source_time is None or known is None:
+                decision = "retained_unordered"
+            elif source_time < known:
+                decision = "retained_older"
+            else:
+                decision = "retained_equal_time"
+            selected = decision in ("selected_initial", "selected_dated", "selected_newer")
+            if selected:
                 conn.execute("UPDATE conversations SET title=?, current_snapshot=?, source_updated_at=? WHERE id=?", (title, sid, source_time, cid))
+            selection.append({
+                "conversation_id": cid, "snapshot_id": sid,
+                "previous_snapshot": previous_sid,
+                "current_snapshot": sid if selected else previous_sid,
+                "decision": decision, "timestamp_status": time_status,
+                "source_updated_at": source_time,
+                "current_source_updated_at": source_time if selected else known,
+            })
         conn.execute("INSERT INTO imports(source_hash,origin,imported_utc,conversations,messages) VALUES (?,?,?,?,?)", (raw_sha, str(source), timestamp, count, total))
-    return {"status": "imported", "source_sha256": raw_sha, "conversations": count, "messages": total}
+    return {"status": "imported", "source_sha256": raw_sha, "conversations": count, "messages": total, "snapshot_selection": selection}
 
 
 def current_query() -> str:

@@ -85,8 +85,8 @@ class LocalPilot(unittest.TestCase):
         with self.assertRaises(ValueError):m.normalized(obj)
 
     def test_07_preserve_revisions_and_latest(self):
-        a=tree();m.import_file(self.conn,self.archive(a,'a.json'))
-        b=tree();b['mapping']['m1']['message']['content']['parts']=['Давай построим другую архитектуру.']
+        a=tree();a['update_time']=1790000000;m.import_file(self.conn,self.archive(a,'a.json'))
+        b=tree();b['update_time']=2000000000;b['mapping']['m1']['message']['content']['parts']=['Давай построим другую архитектуру.']
         m.import_file(self.conn,self.archive(b,'b.json'))
         self.assertEqual(m.summary(self.conn)['revisions'],4)
         self.assertEqual(m.summary(self.conn)['snapshots'],2)
