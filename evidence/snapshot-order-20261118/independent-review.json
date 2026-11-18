@@ -1,0 +1,252 @@
+{
+  "schema": "ontos.arch001.independent-source-review.v1",
+  "reviewed_at_utc": "2026-11-18T04:24:02.378152+00:00",
+  "reviewer": "bridge_audit",
+  "verdict": "NO_BLOCKING_SOURCE_FINDINGS",
+  "blockers": [],
+  "repository": "OntosGit/ontos-chat-exporter",
+  "pull_request": "https://github.com/OntosGit/ontos-chat-exporter/pull/1",
+  "finding": "https://github.com/OntosGit/ontos-chat-exporter/pull/1#issuecomment-6693213777",
+  "base_head": "90b6dd118b55a3452b4692722b125df151b1fd9c",
+  "base_tree": "028f453028b5a6fda6b9c41f6073cf42741e25dd",
+  "candidate_tree_from_complete_file_manifest": "9d75b5a5904f5b6c2a478a8ed56304ca086089be",
+  "candidate_commit": null,
+  "patch": {
+    "path": "candidate.patch",
+    "sha256": "baa27d63c085b1342e054e21304b98bf2908e2f1f7cc40b4b9d000b62f3702e6",
+    "bytes": 25954
+  },
+  "changed_files": {
+    "docs/ARCHITECTURE-MEMORY.md": {
+      "git_blob_sha": "d5a4a42a0e48596314d4b870c32ca94a632c2b79",
+      "sha256": "c0a0863b8c2c646cc26ab16ce8da6e7178f0e7e8e032b41cd455e36f30fb910d",
+      "bytes": 13237,
+      "mode": "100644"
+    },
+    "tests/test_ontos_memory.py": {
+      "git_blob_sha": "8c099c5421e15ce932c762575bbff1324669095a",
+      "sha256": "b11f736605dea76ae672db13b72621b2ca9ffbeaf286393c2c53bf9187007be4",
+      "bytes": 9648,
+      "mode": "100644"
+    },
+    "tests/test_snapshot_order.py": {
+      "git_blob_sha": "0024f2b0f0728d272709dfa4baefa94a1c9d9574",
+      "sha256": "47133f9103866da9498e67b474fdebf22a17389d3968c45e84714abff9b0ed7e",
+      "bytes": 11251,
+      "mode": "100644"
+    },
+    "tools/ontos_memory.py": {
+      "git_blob_sha": "6989ab29c6b4b06512d19d10a204220da71f0147",
+      "sha256": "1a19a5e4d5fb068d7923dd5cec91f5cd790518b5fe209ad8d48e9c3c6fede7ce",
+      "bytes": 22774,
+      "mode": "100644"
+    }
+  },
+  "integrity": {
+    "base_tracked_files": 27,
+    "candidate_tracked_files": 28,
+    "unchanged_base_blobs_and_modes": 24,
+    "complete_base_tree_matches_pin": true,
+    "all_manifest_blobs_bytes_sha256_modes_verified": true,
+    "independent_git_apply_check_and_temporary_roundtrip": true,
+    "qualification_before_after_maps_match_current_files": true,
+    "raw_log_hashes_and_counts_match": true,
+    "executed_runner_and_wrapper_hashes_match": true,
+    "old_18_test_methods_retained": true,
+    "only_old_test_change": "test_07 receives explicit increasing source update_time; assertions unchanged"
+  },
+  "source_review": [
+    "Finite, UTC-representable numeric dates are normalized before comparison; bool, invalid, non-finite and overflowing dates cannot establish chronology. Numeric strings and epoch zero remain supported.",
+    "A first snapshot is selected even with unknown time. Afterwards known dates outrank unknown dates, only strictly newer known dates replace known dates, and equal/incomparable different snapshots retain current.",
+    "Fingerprint excludes update_time. Identical content can raise but cannot lower or erase its known time; no extra snapshot is required.",
+    "Title, current snapshot and selected timestamp change together. Candidate snapshots, revisions and evidence remain; search/discover continue to use selected current.",
+    "Additive snapshot_selection describes each processed conversation, including duplicate IDs/ZIP ordering. Existing return keys and already_imported database no-op remain.",
+    "Legacy schema 1 invalid stored times are normalized for selection. No migration or automatic reconstruction of previously corrupted chronology is claimed.",
+    "The single database transaction rolls back selection and history together after a later malformed conversation.",
+    "Four expected red failures are real current-snapshot/title/freshness regressions in public import_file, not absent response fields or import/harness errors."
+  ],
+  "red_linkage": {
+    "production_files_match_all_27_baseline_blobs": true,
+    "test_file": {
+      "git_blob_sha": "15e07fd4baf0a6a388c00b50ad0ce6b573561f14",
+      "sha256": "ac4cd26bce228b277a5e6e3e3f69c4078ab9e01bf0310b49b2eda0aef41c6c18",
+      "bytes": 11193,
+      "mode": "100644"
+    },
+    "executed_methods_and_helpers_AST_identical_to_final": true,
+    "executed_methods": [
+      "test_dated_snapshot_survives_undated_json",
+      "test_dated_snapshot_survives_undated_zip",
+      "test_boolean_date_does_not_advance_epoch_zero",
+      "test_same_fingerprint_cannot_erase_or_lower_known_time"
+    ],
+    "difference_from_final": "Final adds 1e300 controls to two unselected methods and removes unused math; the full red test file is not byte-identical to final."
+  },
+  "evidence_review": [
+    {
+      "path": "reports-baseline/qualification.json",
+      "sha256": "fd2f9050233f2ffb15e11f6ca83dc8884c1d3c22ccacfc2cd926eaac9318dbd8",
+      "bytes": 15419,
+      "source_file_count": 27,
+      "runner_sha256": "ff2e3135033331888dfc0f2b8b86f8cc4b39d5051a2438316364bcbe020fb509",
+      "wrapper_sha256": "21a34f04b07e4fc7ff46552fb460d0d0f18c78422eb931de6f1072b18b86d061",
+      "runs": [
+        {
+          "name": "python-baseline",
+          "exit_code": 0,
+          "counts": {
+            "tests": 18,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0
+          },
+          "outputs": {
+            "stdout": {
+              "path": "python-baseline.stdout.log",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stderr": {
+              "path": "python-baseline.stderr.log",
+              "bytes": 1879,
+              "sha256": "5315fa290bb1057effb9e0af295f2d444deaff465d8a9a3ec22d0d5ec9da7f8a"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "path": "reports-red/qualification.json",
+      "sha256": "0d2f60444e754c13f1116b86b1fc162a057ae15d68acbad73cf3baf86077651d",
+      "bytes": 16603,
+      "source_file_count": 28,
+      "runner_sha256": "ff2e3135033331888dfc0f2b8b86f8cc4b39d5051a2438316364bcbe020fb509",
+      "wrapper_sha256": "21a34f04b07e4fc7ff46552fb460d0d0f18c78422eb931de6f1072b18b86d061",
+      "runs": [
+        {
+          "name": "python-original-regressions",
+          "exit_code": 1,
+          "counts": {
+            "tests": 4,
+            "failures": 4,
+            "errors": 0,
+            "skipped": 0
+          },
+          "outputs": {
+            "stdout": {
+              "path": "python-original-regressions.stdout.log",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stderr": {
+              "path": "python-original-regressions.stderr.log",
+              "bytes": 4197,
+              "sha256": "393a2ee48a9f96fe3ab7788cd11b1a94963c058fa8116126fff0f596d644d33f"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "path": "reports-candidate/qualification.json",
+      "sha256": "2a1acc41932242788cec286c146da2d51d82fecd6d4da38354d71f9e33b66bea",
+      "bytes": 17477,
+      "source_file_count": 28,
+      "runner_sha256": "d96b5f9dbe997c732378473472ee3fcd2160e1ca448562cc1eb28417a3ba7acc",
+      "wrapper_sha256": "21a34f04b07e4fc7ff46552fb460d0d0f18c78422eb931de6f1072b18b86d061",
+      "runs": [
+        {
+          "name": "python-complete",
+          "exit_code": 0,
+          "counts": {
+            "tests": 33,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0
+          },
+          "outputs": {
+            "stdout": {
+              "path": "python-complete.stdout.log",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stderr": {
+              "path": "python-complete.stderr.log",
+              "bytes": 3950,
+              "sha256": "93e1edd5d30762e7c2abda826c55c29cb1923942d73bdde3aa9db41be03f837c"
+            }
+          }
+        },
+        {
+          "name": "node-complete",
+          "exit_code": 0,
+          "counts": {
+            "tests": 17,
+            "pass": 17,
+            "fail": 0,
+            "cancelled": 0,
+            "skipped": 0,
+            "todo": 0
+          },
+          "outputs": {
+            "stdout": {
+              "path": "node-complete.stdout.log",
+              "bytes": 1390,
+              "sha256": "13360b1d204e19fb841df609f5c9ebaba97d1e34398941b1810b73602d52c7b8"
+            },
+            "stderr": {
+              "path": "node-complete.stderr.log",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "initial_node_reporter_receipt": {
+    "raw_logs_preserved": [
+      {
+        "path": "reports-candidate-initial/node-complete.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      {
+        "path": "reports-candidate-initial/node-complete.stdout.log",
+        "sha256": "cdf5d542a9ceb2eb882ba59d970dec174a02896129db0f99cf6639512dc11d2f",
+        "bytes": 1390
+      },
+      {
+        "path": "reports-candidate-initial/python-complete.stderr.log",
+        "sha256": "8e8f9263ea406d2882cb16c12ac22fe2f8f3fd9ddcb036f39bdc348c3137a7e9",
+        "bytes": 3950
+      },
+      {
+        "path": "reports-candidate-initial/python-complete.stdout.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    ],
+    "actual_node_tests": 17,
+    "actual_node_pass": 17,
+    "actual_node_fail": 0,
+    "explanation": "Initial parser expected TAP # while Node emitted ℹ. Runner delta admits both prefixes and additionally saves source-before.json. This was a receipt parser failure, not a product test failure."
+  },
+  "boundaries": {
+    "review_reran_product_tests": false,
+    "review_imported_product_modules": false,
+    "review_changed_candidate_source": false,
+    "remote_writes": false,
+    "real_chat_archives": false,
+    "native_or_extension_installation": false,
+    "verified_windows_runtime": false,
+    "legacy_auto_repair_claimed": false,
+    "decision_log_persisted_in_database": false,
+    "runtime_scope": "Existing executed gates used unshare user/network namespaces, bwrap read-only source, hidden host home/workspace, temporary directories, cleared environment and seccomp socket denial. Reviewed scripts/receipts; no new product executions."
+  },
+  "legacy_limits": [
+    "Already-imported raw hashes remain no-op; historical per-snapshot timestamps absent from schema 1 are not reconstructed.",
+    "Equal-time conflicts and different undated snapshots retain first selected; result intentionally depends on first import.",
+    "Legacy SQLite REAL 1.0 originating from bool cannot be distinguished from a legitimate numeric timestamp and is not automatically reclassified."
+  ]
+}

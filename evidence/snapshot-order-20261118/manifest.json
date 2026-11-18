@@ -1,0 +1,281 @@
+{
+  "schema": "ontos.source-evidence-bundle.v1",
+  "metadata": {
+    "repository": "OntosGit/ontos-chat-exporter",
+    "base_commit": "90b6dd118b55a3452b4692722b125df151b1fd9c",
+    "base_tree": "028f453028b5a6fda6b9c41f6073cf42741e25dd",
+    "candidate_tree": "9d75b5a5904f5b6c2a478a8ed56304ca086089be",
+    "candidate_commit": null,
+    "candidate_commit_status": "not_created_at_packaging",
+    "source_only": true,
+    "complete_base_tracked_files": 27,
+    "candidate_tracked_files": 28,
+    "counts": {
+      "baseline_python": {
+        "methods": 18,
+        "failures": 0
+      },
+      "red_python": {
+        "methods": 4,
+        "expected_failures": 4,
+        "errors": 0
+      },
+      "final_python": {
+        "methods": 33,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "final_node": {
+        "tests": 17,
+        "pass": 17,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "initial_candidate_attempt": {
+      "directory": "reports-candidate-initial",
+      "classification": "HARNESS_REPORTER_FORMAT_MISMATCH",
+      "note": "Preserved initial raw logs: Node exited 0 and passed 17 tests; the runner expected # but received ℹ. This was a receipt parser failure, not a product test failure. Corrected executed runner is retained separately."
+    },
+    "red_test_provenance": {
+      "path": "red/tests/test_snapshot_order.py",
+      "bytes": 11193,
+      "sha256": "ac4cd26bce228b277a5e6e3e3f69c4078ab9e01bf0310b49b2eda0aef41c6c18",
+      "whole_file_equals_final": false,
+      "final_test_sha256": "47133f9103866da9498e67b474fdebf22a17389d3968c45e84714abff9b0ed7e",
+      "executed_methods": [
+        "test_dated_snapshot_survives_undated_json",
+        "test_dated_snapshot_survives_undated_zip",
+        "test_boolean_date_does_not_advance_epoch_zero",
+        "test_same_fingerprint_cannot_erase_or_lower_known_time"
+      ],
+      "executed_method_asts_match_final": true,
+      "difference_from_final": "Final adds 1e300 controls to two unselected methods and removes unused math; the full red test file is not byte-identical to final.",
+      "qualification": "reports-red/qualification.json"
+    },
+    "independent_review": "independent-review.json",
+    "boundaries": {
+      "real_chat_archives": false,
+      "extension_or_native_installation": false,
+      "remote_provider_calls": false,
+      "database_migration": false
+    }
+  },
+  "archive": {
+    "path": "evidence.json.gz",
+    "bytes": 34684,
+    "sha256": "592ea4689dede478fd18a863e0ec507a7d6e858fb97206db8710b4bb847a0384",
+    "format": "gzip of JSON object mapping relative paths to exact UTF-8 text",
+    "gzip_mtime": 0,
+    "file_count": 37,
+    "input_file_bytes": 183596,
+    "uncompressed_json_bytes": 195631,
+    "uncompressed_json_sha256": "5f2aeb8b5e8e52668218d1f6dcb14fa74752158b48baf455c03f94cde1b271cb",
+    "roundtrip_exact_bytes_verified": true,
+    "input_files_unchanged_during_packaging": true
+  },
+  "files": [
+    {
+      "path": "candidate-manifest.json",
+      "bytes": 7108,
+      "sha256": "863022b9fd5f34425baf648148b372e5b8eebdbd6304b05a38c8d69d7574384c"
+    },
+    {
+      "path": "candidate.patch",
+      "bytes": 25954,
+      "sha256": "baa27d63c085b1342e054e21304b98bf2908e2f1f7cc40b4b9d000b62f3702e6"
+    },
+    {
+      "path": "independent-review.json",
+      "bytes": 10834,
+      "sha256": "0b8843ffc46e3bdc328dcae53ad5e18728ef7bebfebae936591b4bb25238b26e"
+    },
+    {
+      "path": "red/tests/test_snapshot_order.py",
+      "bytes": 11193,
+      "sha256": "ac4cd26bce228b277a5e6e3e3f69c4078ab9e01bf0310b49b2eda0aef41c6c18"
+    },
+    {
+      "path": "reports-baseline/executed-runner.py",
+      "bytes": 5993,
+      "sha256": "ff2e3135033331888dfc0f2b8b86f8cc4b39d5051a2438316364bcbe020fb509"
+    },
+    {
+      "path": "reports-baseline/executed-wrapper.py",
+      "bytes": 2520,
+      "sha256": "21a34f04b07e4fc7ff46552fb460d0d0f18c78422eb931de6f1072b18b86d061"
+    },
+    {
+      "path": "reports-baseline/python-baseline.json",
+      "bytes": 1438,
+      "sha256": "cba8853908da1aa5fffffd67385c6e2b6a1da9f320eedf13aed2bdb1396ea453"
+    },
+    {
+      "path": "reports-baseline/python-baseline.stderr.log",
+      "bytes": 1879,
+      "sha256": "5315fa290bb1057effb9e0af295f2d444deaff465d8a9a3ec22d0d5ec9da7f8a"
+    },
+    {
+      "path": "reports-baseline/python-baseline.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reports-baseline/qualification.json",
+      "bytes": 15419,
+      "sha256": "fd2f9050233f2ffb15e11f6ca83dc8884c1d3c22ccacfc2cd926eaac9318dbd8"
+    },
+    {
+      "path": "reports-candidate-initial/executed-runner.py",
+      "bytes": 5993,
+      "sha256": "ff2e3135033331888dfc0f2b8b86f8cc4b39d5051a2438316364bcbe020fb509"
+    },
+    {
+      "path": "reports-candidate-initial/executed-wrapper.py",
+      "bytes": 2520,
+      "sha256": "21a34f04b07e4fc7ff46552fb460d0d0f18c78422eb931de6f1072b18b86d061"
+    },
+    {
+      "path": "reports-candidate-initial/harness-observation.json",
+      "bytes": 404,
+      "sha256": "c4e2d58ad3579c584dc7e0df1f70738bbf7528325ccbe056f04ec786dfba0974"
+    },
+    {
+      "path": "reports-candidate-initial/node-complete.json",
+      "bytes": 1274,
+      "sha256": "1482bb602d27b5a1b5f7ff8a9ce85c62620c25ec38e9be2875c67ee19aea9c2e"
+    },
+    {
+      "path": "reports-candidate-initial/node-complete.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reports-candidate-initial/node-complete.stdout.log",
+      "bytes": 1390,
+      "sha256": "cdf5d542a9ceb2eb882ba59d970dec174a02896129db0f99cf6639512dc11d2f"
+    },
+    {
+      "path": "reports-candidate-initial/python-complete.json",
+      "bytes": 1444,
+      "sha256": "4956be4ca107be1113e41778256426945e2e8b1b31f3c396494da2ee3a33604c"
+    },
+    {
+      "path": "reports-candidate-initial/python-complete.stderr.log",
+      "bytes": 3950,
+      "sha256": "8e8f9263ea406d2882cb16c12ac22fe2f8f3fd9ddcb036f39bdc348c3137a7e9"
+    },
+    {
+      "path": "reports-candidate-initial/python-complete.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reports-candidate/executed-runner.py",
+      "bytes": 6095,
+      "sha256": "d96b5f9dbe997c732378473472ee3fcd2160e1ca448562cc1eb28417a3ba7acc"
+    },
+    {
+      "path": "reports-candidate/executed-wrapper.py",
+      "bytes": 2520,
+      "sha256": "21a34f04b07e4fc7ff46552fb460d0d0f18c78422eb931de6f1072b18b86d061"
+    },
+    {
+      "path": "reports-candidate/node-complete.json",
+      "bytes": 1364,
+      "sha256": "a5daa140ec9b2496c2222ef9b09b8234290c5e0f748c4ec7a7addd8ab9fa9a43"
+    },
+    {
+      "path": "reports-candidate/node-complete.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reports-candidate/node-complete.stdout.log",
+      "bytes": 1390,
+      "sha256": "13360b1d204e19fb841df609f5c9ebaba97d1e34398941b1810b73602d52c7b8"
+    },
+    {
+      "path": "reports-candidate/python-complete.json",
+      "bytes": 1444,
+      "sha256": "1601095b3f6f9d8bda3a88d6f138a7019686549d9c60c8714a2d4e495b8106ce"
+    },
+    {
+      "path": "reports-candidate/python-complete.stderr.log",
+      "bytes": 3950,
+      "sha256": "93e1edd5d30762e7c2abda826c55c29cb1923942d73bdde3aa9db41be03f837c"
+    },
+    {
+      "path": "reports-candidate/python-complete.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reports-candidate/qualification.json",
+      "bytes": 17477,
+      "sha256": "2a1acc41932242788cec286c146da2d51d82fecd6d4da38354d71f9e33b66bea"
+    },
+    {
+      "path": "reports-candidate/source-before.json",
+      "bytes": 6154,
+      "sha256": "3f627df128de0a0679c46e087b148bf7f5d3797767e8dad64b2236ee280e6073"
+    },
+    {
+      "path": "reports-red/executed-runner.py",
+      "bytes": 5993,
+      "sha256": "ff2e3135033331888dfc0f2b8b86f8cc4b39d5051a2438316364bcbe020fb509"
+    },
+    {
+      "path": "reports-red/executed-wrapper.py",
+      "bytes": 2520,
+      "sha256": "21a34f04b07e4fc7ff46552fb460d0d0f18c78422eb931de6f1072b18b86d061"
+    },
+    {
+      "path": "reports-red/python-original-regressions.json",
+      "bytes": 2059,
+      "sha256": "7b5f527239bac590dbfcc4716a4e04a2eaf7cd38d99fa31df9217961f8415be4"
+    },
+    {
+      "path": "reports-red/python-original-regressions.stderr.log",
+      "bytes": 4197,
+      "sha256": "393a2ee48a9f96fe3ab7788cd11b1a94963c058fa8116126fff0f596d644d33f"
+    },
+    {
+      "path": "reports-red/python-original-regressions.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reports-red/qualification.json",
+      "bytes": 16603,
+      "sha256": "0d2f60444e754c13f1116b86b1fc162a057ae15d68acbad73cf3baf86077651d"
+    },
+    {
+      "path": "run_gate.py",
+      "bytes": 6095,
+      "sha256": "d96b5f9dbe997c732378473472ee3fcd2160e1ca448562cc1eb28417a3ba7acc"
+    },
+    {
+      "path": "source-manifest.json",
+      "bytes": 6422,
+      "sha256": "735b3755a7d70cf189c9c651f43097a3f3083dc49eee5f51c2dc5b2e771e68a4"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "evidence.json.gz",
+      "bytes": 34684,
+      "sha256": "592ea4689dede478fd18a863e0ec507a7d6e858fb97206db8710b4bb847a0384"
+    }
+  ],
+  "excluded": [
+    "production source trees",
+    "materialization payloads",
+    "patch roundtrip copies"
+  ],
+  "packaging_ran_tests": false,
+  "packaging_remote_writes": false
+}
